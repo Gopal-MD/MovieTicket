@@ -1,0 +1,409 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Book Ticket — CinePass</title>
+  <meta name="description" content="Book a movie ticket, auto-generate a unique QR code, and save it for cinema entry."/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <div id="navbar-placeholder"></div>
+
+  <div class="page-wrapper">
+    <div class="page-header">
+      <h1>🎟️ Book a <span>Ticket</span></h1>
+      <p>Fill in the details below to generate a unique QR-based cinema ticket.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 380px;gap:2rem;align-items:start;">
+
+      <!-- ── Booking Form ──────────────────────────────────── -->
+      <div class="card">
+        <div class="card-title"><span class="icon">📋</span> Ticket Details</div>
+        <form id="booking-form" novalidate>
+          <div class="form-grid">
+
+            <!-- Customer Name -->
+            <div class="form-group">
+              <label for="customer-name">Customer Name <span class="required">*</span></label>
+              <input type="text" id="customer-name" placeholder="e.g. Priya Sharma" required/>
+            </div>
+
+            <!-- Phone -->
+            <div class="form-group">
+              <label for="phone">Phone Number <span class="required">*</span></label>
+              <input type="tel" id="phone" placeholder="e.g. 9876543210" required pattern="[0-9]{10,13}"/>
+            </div>
+
+            <!-- Email -->
+            <div class="form-group">
+              <label for="email">Email Address <span class="required">*</span></label>
+              <input type="email" id="email" placeholder="e.g. priya@example.com" required/>
+            </div>
+
+            <!-- Movie Name -->
+            <div class="form-group">
+              <label for="movie-name">Movie Name <span class="required">*</span></label>
+              <input type="text" id="movie-name" list="movie-list" placeholder="e.g. Inception" required/>
+              <datalist id="movie-list">
+                <option value="Inception"/>
+                <option value="Interstellar"/>
+                <option value="Avatar: Way of Water"/>
+                <option value="Oppenheimer"/>
+                <option value="Dune: Part Two"/>
+                <option value="The Dark Knight"/>
+                <option value="Avengers: Endgame"/>
+              </datalist>
+            </div>
+
+            <!-- Show Date -->
+            <div class="form-group">
+              <label for="show-date">Show Date <span class="required">*</span></label>
+              <input type="date" id="show-date" required/>
+            </div>
+
+            <!-- Show Time -->
+            <div class="form-group">
+              <label for="show-time">Show Time <span class="required">*</span></label>
+              <select id="show-time" required>
+                <option value="">Select time…</option>
+                <option value="09:00">09:00 AM — Morning</option>
+                <option value="12:00">12:00 PM — Noon</option>
+                <option value="15:00">03:00 PM — Matinee</option>
+                <option value="18:30">06:30 PM — Evening</option>
+                <option value="21:00">09:00 PM — Night</option>
+                <option value="23:59">11:59 PM — Late Night</option>
+              </select>
+            </div>
+
+            <!-- Screen / Hall -->
+            <div class="form-group">
+              <label for="screen-no">Screen / Hall Number <span class="required">*</span></label>
+              <select id="screen-no" required>
+                <option value="">Select screen…</option>
+                <option value="Screen 1">Screen 1 — Premium</option>
+                <option value="Screen 2">Screen 2 — 4DX</option>
+                <option value="Screen 3">Screen 3 — IMAX</option>
+                <option value="Screen 4">Screen 4 — Standard</option>
+                <option value="Screen 5">Screen 5 — Dolby Atmos</option>
+              </select>
+            </div>
+
+            <!-- Number of Tickets -->
+            <div class="form-group">
+              <label for="num-tickets">Number of Tickets <span class="required">*</span></label>
+              <input type="number" id="num-tickets" min="1" max="20" value="1" placeholder="1" required/>
+            </div>
+
+            <!-- Ticket Price -->
+            <div class="form-group">
+              <label for="ticket-price">Price per Ticket (₹) <span class="required">*</span></label>
+              <input type="number" id="ticket-price" min="0" step="10" value="250" placeholder="250" required/>
+              <span class="input-hint">Screen type auto-suggests price</span>
+            </div>
+
+            <!-- Seat Numbers -->
+            <div class="form-group span-2">
+              <label for="seat-numbers">Seat Number(s) <span class="required">*</span></label>
+              <input type="text" id="seat-numbers" placeholder="e.g. A12, A13, B04" required/>
+              <span class="input-hint">Comma-separated seat labels</span>
+            </div>
+
+            <!-- Total Price -->
+            <div class="form-group span-full">
+              <label>Total Amount</label>
+              <div class="price-display" id="total-display">
+                <span>💰</span>
+                <span id="total-amount-label">₹250</span>
+              </div>
+            </div>
+
+          </div><!-- /form-grid -->
+
+          <div class="divider"></div>
+          <button type="submit" class="btn btn-primary btn-lg btn-full" id="submit-btn">
+            🎬 Generate Ticket &amp; QR Code
+          </button>
+        </form>
+      </div><!-- /card -->
+
+      <!-- ── QR Output Panel ─────────────────────────────── -->
+      <div style="position:sticky;top:80px;">
+        <div class="card" id="qr-output-card">
+          <div class="card-title"><span class="icon">📱</span> Your QR Ticket</div>
+
+          <!-- Placeholder state -->
+          <div id="qr-placeholder" style="text-align:center;padding:2rem 1rem;color:var(--text-muted);">
+            <div style="font-size:3rem;margin-bottom:1rem;">🎫</div>
+            <p style="font-size:0.9rem;line-height:1.7;">Fill the form and click <strong style="color:var(--gold-primary);">Generate Ticket</strong> to create your QR code here.</p>
+          </div>
+
+          <!-- QR result (hidden until generated) -->
+          <div id="qr-result" style="display:none;">
+            <div class="qr-container">
+              <div class="qr-canvas-wrapper" id="qr-canvas-wrapper">
+                <canvas id="qr-canvas"></canvas>
+              </div>
+              <div class="qr-ticket-id" id="qr-ticket-id-label"></div>
+              <p style="font-size:0.8rem;color:var(--text-muted);text-align:center;">Scan this code at the cinema entry gate</p>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Ticket Summary -->
+            <div id="ticket-summary" style="font-size:0.85rem;display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;"></div>
+
+            <div class="divider"></div>
+
+            <div style="display:flex;flex-direction:column;gap:0.6rem;">
+              <button class="btn btn-gold btn-full" id="download-qr-btn">⬇️ Download QR (PNG)</button>
+              <button class="btn btn-outline btn-full" id="print-ticket-btn">🖨️ Print Ticket</button>
+              <button class="btn btn-outline btn-full" id="new-ticket-btn">➕ Book Another Ticket</button>
+            </div>
+          </div><!-- /qr-result -->
+        </div>
+      </div>
+
+    </div><!-- /grid -->
+  </div><!-- /page-wrapper -->
+
+  <!-- Print Styles -->
+  <style>
+    @media print {
+      body > *:not(#print-area) { display: none !important; }
+      #print-area { display: block !important; }
+    }
+    #print-area { display: none; }
+    .print-ticket {
+      font-family: 'Outfit', sans-serif;
+      max-width: 400px; margin: 0 auto; padding: 24px;
+      border: 2px solid #000; border-radius: 12px;
+      text-align: center;
+    }
+    .print-ticket h2 { font-size: 1.5rem; margin-bottom: 4px; }
+    .print-ticket .pt-id { font-size: 0.9rem; color: #666; margin-bottom: 12px; }
+    .print-ticket .pt-qr img { width: 180px; height: 180px; }
+    .print-ticket .pt-details { text-align: left; margin-top: 16px; font-size: 0.85rem; }
+    .print-ticket .pt-details div { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #eee; }
+    .print-ticket .pt-details div span:first-child { color: #555; }
+    .print-ticket .pt-details div span:last-child { font-weight: 600; }
+  </style>
+  <div id="print-area"></div>
+
+  <!-- CDN Libraries -->
+  <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="script.js"></script>
+  <script>
+  (function() {
+    'use strict';
+
+    // ── Price suggestions by screen type ───────────────────
+    const SCREEN_PRICES = {
+      'Screen 1': 350, 'Screen 2': 550, 'Screen 3': 500,
+      'Screen 4': 250, 'Screen 5': 450
+    };
+
+    // ── DOM refs ────────────────────────────────────────────
+    const form          = document.getElementById('booking-form');
+    const numTicketsEl  = document.getElementById('num-tickets');
+    const priceEl       = document.getElementById('ticket-price');
+    const totalLabel    = document.getElementById('total-amount-label');
+    const screenEl      = document.getElementById('screen-no');
+    const qrPlaceholder = document.getElementById('qr-placeholder');
+    const qrResult      = document.getElementById('qr-result');
+    const qrCanvas      = document.getElementById('qr-canvas');
+    const qrIdLabel     = document.getElementById('qr-ticket-id-label');
+    const ticketSummary = document.getElementById('ticket-summary');
+    const downloadBtn   = document.getElementById('download-qr-btn');
+    const printBtn      = document.getElementById('print-ticket-btn');
+    const newTicketBtn  = document.getElementById('new-ticket-btn');
+    const submitBtn     = document.getElementById('submit-btn');
+
+    let currentTicket = null;
+
+    // ── Set min date to today ───────────────────────────────
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('show-date').min = today;
+    document.getElementById('show-date').value = today;
+
+    // ── Update total price ──────────────────────────────────
+    function updateTotal() {
+      const n = parseInt(numTicketsEl.value) || 1;
+      const p = parseFloat(priceEl.value) || 0;
+      const total = n * p;
+      totalLabel.textContent = formatCurrency(total);
+    }
+
+    numTicketsEl.addEventListener('input', updateTotal);
+    priceEl.addEventListener('input', updateTotal);
+    updateTotal();
+
+    // ── Auto-suggest price on screen change ────────────────
+    screenEl.addEventListener('change', () => {
+      const suggested = SCREEN_PRICES[screenEl.value];
+      if (suggested) { priceEl.value = suggested; updateTotal(); }
+    });
+
+    // ── Form validation helper ──────────────────────────────
+    function validateForm() {
+      const fields = [
+        { id: 'customer-name', label: 'Customer Name' },
+        { id: 'phone',         label: 'Phone Number' },
+        { id: 'email',         label: 'Email' },
+        { id: 'movie-name',    label: 'Movie Name' },
+        { id: 'show-date',     label: 'Show Date' },
+        { id: 'show-time',     label: 'Show Time' },
+        { id: 'screen-no',     label: 'Screen / Hall' },
+        { id: 'seat-numbers',  label: 'Seat Numbers' },
+        { id: 'num-tickets',   label: 'Number of Tickets' },
+        { id: 'ticket-price',  label: 'Ticket Price' },
+      ];
+      for (const f of fields) {
+        const el = document.getElementById(f.id);
+        if (!el.value.trim()) {
+          showToast('Please fill in: ' + f.label, 'error');
+          el.focus();
+          return false;
+        }
+      }
+      const emailEl = document.getElementById('email');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailEl.value.trim())) {
+        showToast('Please enter a valid email address.', 'error');
+        emailEl.focus();
+        return false;
+      }
+      return true;
+    }
+
+    // ── Build ticket object ─────────────────────────────────
+    function buildTicket() {
+      const numTickets = parseInt(numTicketsEl.value) || 1;
+      const pricePerTicket = parseFloat(priceEl.value) || 0;
+      return {
+        ticketId:     generateTicketId(),
+        bookedAt:     new Date().toISOString(),
+        customerName: document.getElementById('customer-name').value.trim(),
+        phone:        document.getElementById('phone').value.trim(),
+        email:        document.getElementById('email').value.trim(),
+        movieName:    document.getElementById('movie-name').value.trim(),
+        showDate:     document.getElementById('show-date').value,
+        showTime:     document.getElementById('show-time').value,
+        screenNo:     screenEl.value,
+        seatNumbers:  document.getElementById('seat-numbers').value.trim(),
+        numTickets,
+        pricePerTicket,
+        totalPrice:   numTickets * pricePerTicket,
+        used:         false,
+        usedAt:       null,
+      };
+    }
+
+    // ── Generate QR ─────────────────────────────────────────
+    async function generateQR(ticket) {
+      const qrData = encodeTicketToQR(ticket);
+      await QRCode.toCanvas(qrCanvas, qrData, {
+        width: 220, margin: 1,
+        color: { dark: '#000000', light: '#ffffff' },
+        errorCorrectionLevel: 'M'
+      });
+    }
+
+    // ── Render ticket summary ───────────────────────────────
+    function renderSummary(ticket) {
+      const items = [
+        ['🎬 Movie',   escHtml(ticket.movieName)],
+        ['📅 Date',    formatDate(ticket.showDate)],
+        ['🕐 Time',    formatTime(ticket.showTime)],
+        ['🎭 Screen',  escHtml(ticket.screenNo)],
+        ['💺 Seats',   escHtml(ticket.seatNumbers)],
+        ['🎫 Tickets', ticket.numTickets],
+        ['💰 Total',   formatCurrency(ticket.totalPrice)],
+        ['👤 Name',    escHtml(ticket.customerName)],
+      ];
+      ticketSummary.innerHTML = items.map(([l, v]) => `
+        <div style="display:flex;flex-direction:column;gap:0.15rem;padding:0.5rem;background:rgba(255,255,255,0.03);border-radius:6px;">
+          <span style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;font-weight:600;letter-spacing:0.4px;">${l}</span>
+          <span style="font-weight:600;color:var(--text-primary);">${v}</span>
+        </div>`).join('');
+    }
+
+    // ── Form submit ─────────────────────────────────────────
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!validateForm()) return;
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner"></span> Generating…';
+
+      try {
+        const ticket = buildTicket();
+        await generateQR(ticket);
+        addTicket(ticket);
+        currentTicket = ticket;
+
+        qrIdLabel.textContent = ticket.ticketId;
+        renderSummary(ticket);
+
+        qrPlaceholder.style.display = 'none';
+        qrResult.style.display = 'block';
+
+        showToast('✅ Ticket generated and saved!', 'success');
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to generate QR code. Please try again.', 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '🎬 Generate Ticket &amp; QR Code';
+      }
+    });
+
+    // ── Download QR ─────────────────────────────────────────
+    downloadBtn.addEventListener('click', () => {
+      if (!currentTicket) return;
+      const link = document.createElement('a');
+      link.download = currentTicket.ticketId + '.png';
+      link.href = qrCanvas.toDataURL('image/png');
+      link.click();
+      showToast('QR image downloaded!', 'success');
+    });
+
+    // ── Print Ticket ─────────────────────────────────────────
+    printBtn.addEventListener('click', () => {
+      if (!currentTicket) return;
+      const t = currentTicket;
+      const imgData = qrCanvas.toDataURL('image/png');
+      const printArea = document.getElementById('print-area');
+      printArea.innerHTML = `
+        <div class="print-ticket">
+          <h2>🎬 ${escHtml(t.movieName)}</h2>
+          <div class="pt-id">${escHtml(t.ticketId)}</div>
+          <div class="pt-qr"><img src="${imgData}" alt="QR Code"/></div>
+          <div class="pt-details">
+            <div><span>Customer</span><span>${escHtml(t.customerName)}</span></div>
+            <div><span>Date</span><span>${formatDate(t.showDate)}</span></div>
+            <div><span>Time</span><span>${formatTime(t.showTime)}</span></div>
+            <div><span>Screen</span><span>${escHtml(t.screenNo)}</span></div>
+            <div><span>Seats</span><span>${escHtml(t.seatNumbers)}</span></div>
+            <div><span>Tickets</span><span>${t.numTickets}</span></div>
+            <div><span>Total</span><span>${formatCurrency(t.totalPrice)}</span></div>
+          </div>
+        </div>`;
+      window.print();
+    });
+
+    // ── New ticket ──────────────────────────────────────────
+    newTicketBtn.addEventListener('click', () => {
+      form.reset();
+      document.getElementById('show-date').value = today;
+      updateTotal();
+      qrResult.style.display = 'none';
+      qrPlaceholder.style.display = 'block';
+      currentTicket = null;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+  })();
+  </script>
+</body>
+</html>

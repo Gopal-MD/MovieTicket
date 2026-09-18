@@ -1,0 +1,81 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Dashboard — CinePass</title>
+  <meta name="description" content="Manage and track all movie tickets — status, entry, revenue, and filtering."/>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .ticket-row-id { font-family: monospace; font-size: 0.8rem; color: var(--text-muted); }
+    .action-cell { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <div id="navbar-placeholder"></div>
+  <div class="page-wrapper">
+    <div class="page-header flex items-center justify-between" style="flex-wrap:wrap;gap:1rem;">
+      <div>
+        <h1>📊 Ticket <span>Dashboard</span></h1>
+        <p>All booked tickets — live status, entry tracking, and records.</p>
+      </div>
+      <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+        <button class="btn btn-outline btn-sm" id="refresh-btn">🔄 Refresh</button>
+        <button class="btn btn-gold btn-sm" id="export-btn">📥 Export CSV</button>
+        <button class="btn btn-danger btn-sm" id="clear-all-btn">🗑️ Clear All Data</button>
+      </div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label">Total Tickets</div><div class="stat-value white" id="stat-total">0</div></div>
+      <div class="stat-card"><div class="stat-label">Entry Used</div><div class="stat-value green" id="stat-used">0</div></div>
+      <div class="stat-card"><div class="stat-label">Pending Entry</div><div class="stat-value gold" id="stat-pending">0</div></div>
+      <div class="stat-card"><div class="stat-label">Total Revenue</div><div class="stat-value red" id="stat-revenue">Rs.0</div></div>
+    </div>
+    <div class="filter-bar">
+      <div class="search-wrapper">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="search-input" placeholder="Search by Ticket ID, Name, or Movie..." autocomplete="off"/>
+      </div>
+      <select id="status-filter" style="min-width:160px;">
+        <option value="">All Statuses</option>
+        <option value="unused">Pending Entry</option>
+        <option value="used">Used (Entered)</option>
+      </select>
+      <select id="movie-filter" style="min-width:160px;">
+        <option value="">All Movies</option>
+      </select>
+    </div>
+    <div class="table-wrapper">
+      <table id="tickets-table">
+        <thead>
+          <tr>
+            <th>Ticket ID</th><th>Customer</th><th>Movie</th><th>Date</th>
+            <th>Time</th><th>Screen</th><th>Seats</th><th>Qty</th>
+            <th>Total</th><th>Status</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tickets-tbody">
+          <tr><td colspan="11"><div class="table-empty"><div class="empty-icon">🎫</div><p>No tickets yet. <a href="booking.html" style="color:var(--gold-primary);">Book your first ticket</a></p></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
+      <div id="table-info" style="font-size:0.82rem;color:var(--text-muted);"></div>
+      <a href="booking.html" class="btn btn-primary btn-sm">+ Book New Ticket</a>
+    </div>
+  </div>
+  <div class="modal-overlay" id="detail-modal">
+    <div class="modal" style="max-width:600px;">
+      <div class="modal-header">
+        <span class="modal-title">🎫 Ticket Details</span>
+        <button class="modal-close" id="detail-modal-close">X</button>
+      </div>
+      <div id="detail-modal-body"></div>
+      <div class="divider"></div>
+      <div style="display:flex;gap:0.6rem;justify-content:flex-end;flex-wrap:wrap;" id="detail-modal-actions"></div>
+    </div>
+  </div>
+  <script src="script.js"></script>
+  <script src="dashboard_logic.js"></script>
+</body>
+</html>

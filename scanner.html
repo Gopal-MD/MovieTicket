@@ -1,0 +1,354 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>QR Scanner — CinePass</title>
+  <meta name="description" content="Scan movie ticket QR codes at the cinema entry gate for instant verification."/>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    /* Override html5-qrcode default styles */
+    #reader { border: none !important; box-shadow: none !important; }
+    #reader__scan_region { border: none !important; padding: 0 !important; }
+    #reader__scan_region img { display: none !important; }
+    #reader__dashboard { display: none !important; }
+    #reader video { border-radius: 12px !important; }
+    .html5-qrcode-element { display: none !important; }
+    #reader__status_span { display: none !important; }
+    #reader__header_message { display: none !important; }
+
+    .scanner-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start; }
+    @media(max-width: 860px) { .scanner-layout { grid-template-columns: 1fr; } }
+
+    .scan-status-bar {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.7rem 1rem;
+      background: rgba(229,9,20,0.06);
+      border: 1px solid rgba(229,9,20,0.15);
+      border-radius: 8px;
+      font-size: 0.85rem; font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+    }
+    .scan-status-bar.active { background: rgba(34,197,94,0.06); border-color: rgba(34,197,94,0.15); color: #4ade80; }
+
+    .manual-section { margin-top: 1.5rem; }
+    .manual-section label { display: block; margin-bottom: 0.5rem; }
+    .manual-input-row { display: flex; gap: 0.6rem; }
+    .manual-input-row input { flex: 1; }
+  </style>
+</head>
+<body>
+  <div id="navbar-placeholder"></div>
+
+  <div class="page-wrapper">
+    <div class="page-header">
+      <h1>📷 QR <span>Scanner</span></h1>
+      <p>Scan a ticket QR code to verify entry. One scan per ticket — duplicates are rejected.</p>
+    </div>
+
+    <div class="scanner-layout">
+
+      <!-- ── Left: Camera + Manual ──────────────────────── -->
+      <div>
+        <!-- Status bar -->
+        <div class="scan-status-bar" id="scan-status-bar">
+          <span class="pulse-dot"></span>
+          <span id="scan-status-text">Camera not started</span>
+        </div>
+
+        <!-- Camera controls -->
+        <div style="display:flex;gap:0.7rem;margin-bottom:1rem;flex-wrap:wrap;">
+          <button class="btn btn-primary" id="start-scan-btn">▶️ Start Camera</button>
+          <button class="btn btn-outline" id="stop-scan-btn" disabled>⏹️ Stop Camera</button>
+        </div>
+
+        <!-- Scanner box -->
+        <div class="scanner-box" id="scanner-container">
+          <div id="reader"></div>
+          <div class="scan-corner"></div>
+          <div class="scan-line" id="scan-line" style="display:none;"></div>
+          <div id="scanner-idle" style="text-align:center;color:var(--text-muted);padding:2rem;">
+            <div style="font-size:3rem;margin-bottom:0.75rem;">📷</div>
+            <p style="font-size:0.9rem;">Click <strong style="color:var(--gold-primary);">Start Camera</strong> to begin scanning</p>
+          </div>
+        </div>
+
+        <!-- Camera selector -->
+        <div style="margin-top:0.75rem;" id="camera-selector-wrap">
+          <label for="camera-select" style="display:block;margin-bottom:0.4rem;">Camera:</label>
+          <select id="camera-select">
+            <option value="">Auto-detect</option>
+          </select>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Manual Fallback -->
+        <div class="manual-section">
+          <div class="card-title"><span>🔤</span> Manual Ticket ID Entry</div>
+          <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:1rem;">
+            Camera not working? Paste or type the Ticket ID to verify manually.
+          </p>
+          <div class="manual-input-row">
+            <input type="text" id="manual-ticket-id" placeholder="e.g. TCK-1726655400000-ABC12" autocomplete="off"/>
+            <button class="btn btn-gold" id="manual-verify-btn">🔍 Verify</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Right: Scan Result ──────────────────────────── -->
+      <div>
+        <div class="card-title" style="margin-bottom:1rem;"><span>📋</span> Verification Result</div>
+
+        <!-- Default empty state -->
+        <div id="result-placeholder" class="card" style="text-align:center;padding:3rem 2rem;">
+          <div style="font-size:3rem;margin-bottom:1rem;">🎫</div>
+          <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.7;">
+            Scan a QR code or enter a Ticket ID manually.<br>The verification result will appear here.
+          </p>
+        </div>
+
+        <!-- Dynamic result card -->
+        <div id="scan-result-output"></div>
+
+        <!-- Scan history -->
+        <div id="scan-history-section" style="margin-top:2rem;display:none;">
+          <div class="flex items-center justify-between mb-2">
+            <div class="card-title" style="margin-bottom:0;"><span>📜</span> Session Scans</div>
+            <button class="btn btn-sm btn-outline" id="clear-history-btn">Clear</button>
+          </div>
+          <div id="scan-history-list" style="display:flex;flex-direction:column;gap:0.5rem;"></div>
+        </div>
+      </div>
+
+    </div><!-- /scanner-layout -->
+  </div><!-- /page-wrapper -->
+
+  <!-- CDN: html5-qrcode -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="script.js"></script>
+  <script>
+  (function() {
+    'use strict';
+
+    let html5QrCode = null;
+    let scanning = false;
+    let lastScannedId = null;
+    const sessionScans = [];
+
+    const startBtn      = document.getElementById('start-scan-btn');
+    const stopBtn       = document.getElementById('stop-scan-btn');
+    const statusBar     = document.getElementById('scan-status-bar');
+    const statusText    = document.getElementById('scan-status-text');
+    const scanLine      = document.getElementById('scan-line');
+    const scannerIdle   = document.getElementById('scanner-idle');
+    const resultOutput  = document.getElementById('scan-result-output');
+    const placeholder   = document.getElementById('result-placeholder');
+    const manualInput   = document.getElementById('manual-ticket-id');
+    const manualBtn     = document.getElementById('manual-verify-btn');
+    const cameraSelect  = document.getElementById('camera-select');
+    const historySection= document.getElementById('scan-history-section');
+    const historyList   = document.getElementById('scan-history-list');
+    const clearHistoryBtn = document.getElementById('clear-history-btn');
+
+    // ── Status bar helpers ──────────────────────────────────
+    function setStatus(text, active = false) {
+      statusText.textContent = text;
+      statusBar.classList.toggle('active', active);
+    }
+
+    // ── Populate camera list ────────────────────────────────
+    async function populateCameras() {
+      try {
+        const devices = await Html5Qrcode.getCameras();
+        cameraSelect.innerHTML = '<option value="">Auto-detect</option>';
+        devices.forEach(d => {
+          const opt = document.createElement('option');
+          opt.value = d.id;
+          opt.textContent = d.label || 'Camera ' + (cameraSelect.options.length);
+          cameraSelect.appendChild(opt);
+        });
+        // Prefer back camera
+        const back = devices.find(d => /back|rear|environment/i.test(d.label));
+        if (back) cameraSelect.value = back.id;
+      } catch (e) {
+        console.warn('Could not enumerate cameras:', e);
+      }
+    }
+
+    // ── Start camera scan ───────────────────────────────────
+    startBtn.addEventListener('click', async () => {
+      if (scanning) return;
+      await populateCameras();
+
+      if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode('reader');
+      }
+
+      const cameraId = cameraSelect.value || { facingMode: 'environment' };
+      const config = { fps: 12, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 };
+
+      try {
+        await html5QrCode.start(
+          cameraId,
+          config,
+          onScanSuccess,
+          () => {} // ignore continuous decode errors
+        );
+        scanning = true;
+        scannerIdle.style.display = 'none';
+        scanLine.style.display = 'block';
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        setStatus('Camera active — point at QR code', true);
+        showToast('Camera started successfully', 'success');
+      } catch (err) {
+        console.error(err);
+        showToast('Could not start camera: ' + (err.message || err), 'error');
+        setStatus('Camera error');
+      }
+    });
+
+    // ── Stop camera ─────────────────────────────────────────
+    stopBtn.addEventListener('click', async () => {
+      if (!scanning || !html5QrCode) return;
+      try {
+        await html5QrCode.stop();
+        scanning = false;
+        scanLine.style.display = 'none';
+        scannerIdle.style.display = 'block';
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        setStatus('Camera stopped');
+        showToast('Camera stopped', 'info');
+      } catch (e) { console.error(e); }
+    });
+
+    // ── QR scan success ─────────────────────────────────────
+    function onScanSuccess(decodedText) {
+      // Debounce: skip if same ticket scanned within 3 seconds
+      if (decodedText === lastScannedId) return;
+      lastScannedId = decodedText;
+      setTimeout(() => { lastScannedId = null; }, 3000);
+
+      // Try JSON decode
+      const ticketData = decodeQRToTicket(decodedText);
+      let ticketId = ticketData ? ticketData.ticketId : decodedText.trim();
+      verifyTicket(ticketId, ticketData);
+    }
+
+    // ── Manual verify ────────────────────────────────────────
+    manualBtn.addEventListener('click', () => {
+      const tid = manualInput.value.trim();
+      if (!tid) { showToast('Please enter a Ticket ID', 'error'); return; }
+      verifyTicket(tid, null);
+    });
+
+    manualInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') manualBtn.click();
+    });
+
+    // ── Core verify function ─────────────────────────────────
+    function verifyTicket(ticketId, scannedData) {
+      const stored = getTicketById(ticketId);
+
+      if (!stored) {
+        // Not found
+        renderResult({
+          status: 'invalid',
+          icon: '❌',
+          headline: 'Invalid Ticket',
+          subline: 'This ticket was not found in the system.',
+          data: scannedData || { ticketId }
+        });
+        showToast('❌ Invalid ticket', 'error');
+        addHistory(ticketId, 'invalid');
+        return;
+      }
+
+      if (stored.used) {
+        // Already used
+        renderResult({
+          status: 'used',
+          icon: '⚠️',
+          headline: 'Already Used',
+          subline: 'Entry was granted on ' + formatDateTime(stored.usedAt) + '.',
+          data: stored
+        });
+        showToast('⚠️ Ticket already used', 'warning');
+        addHistory(ticketId, 'used');
+        return;
+      }
+
+      // Valid — mark as used
+      markTicketUsed(ticketId);
+      const updated = getTicketById(ticketId);
+
+      renderResult({
+        status: 'valid',
+        icon: '✅',
+        headline: 'Valid — Allow Entry',
+        subline: 'Ticket verified successfully. Entry granted!',
+        data: updated || stored
+      });
+      showToast('✅ Valid ticket — entry granted!', 'success');
+      addHistory(ticketId, 'valid');
+    }
+
+    // ── Render result card ───────────────────────────────────
+    function renderResult({ status, icon, headline, subline, data }) {
+      placeholder.style.display = 'none';
+
+      const details = data && data.customerName ? `
+        <div class="ticket-detail-grid" style="margin-top:0.5rem;">
+          <div class="ticket-detail-item"><span class="ticket-detail-label">Ticket ID</span><span class="ticket-detail-value font-mono" style="font-size:0.78rem;">${escHtml(data.ticketId)}</span></div>
+          <div class="ticket-detail-item"><span class="ticket-detail-label">Customer</span><span class="ticket-detail-value">${escHtml(data.customerName)}</span></div>
+          <div class="ticket-detail-item"><span class="ticket-detail-label">Movie</span><span class="ticket-detail-value">${escHtml(data.movieName)}</span></div>
+          <div class="ticket-detail-item"><span class="ticket-detail-label">Show Date</span><span class="ticket-detail-value">${formatDate(data.showDate)}</span></div>
+          <div class="ticket-detail-item"><span class="ticket-detail-label">Show Time</span><span class="ticket-detail-value">${formatTime(data.showTime)}</span></div>
+          <div class="ticket-detail-item"><span class="ticket-detail-label">Screen</span><span class="ticket-detail-value">${escHtml(data.screenNo)}</span></div>
+          <div class="ticket-detail-item"><span class="ticket-detail-label">Seats</span><span class="ticket-detail-value">${escHtml(data.seatNumbers)}</span></div>
+          <div class="ticket-detail-item"><span class="ticket-detail-label">Tickets</span><span class="ticket-detail-value">${data.numTickets}</span></div>
+        </div>` : `<p style="color:var(--text-muted);font-size:0.85rem;margin-top:0.5rem;">Ticket ID: <code>${escHtml(data && data.ticketId)}</code></p>`;
+
+      resultOutput.innerHTML = `
+        <div class="scan-result-card">
+          <div class="scan-result-header ${status}">
+            <div class="scan-result-icon">${icon}</div>
+            <div>
+              <div class="scan-result-status">${headline}</div>
+              <div class="scan-result-sub">${subline}</div>
+            </div>
+          </div>
+          <div class="scan-result-body">${details}</div>
+        </div>`;
+    }
+
+    // ── Session scan history ─────────────────────────────────
+    function addHistory(ticketId, status) {
+      sessionScans.unshift({ ticketId, status, time: new Date() });
+      renderHistory();
+    }
+
+    function renderHistory() {
+      if (sessionScans.length === 0) { historySection.style.display = 'none'; return; }
+      historySection.style.display = 'block';
+      const icons = { valid: '✅', invalid: '❌', used: '⚠️' };
+      historyList.innerHTML = sessionScans.slice(0, 8).map(s => `
+        <div style="display:flex;align-items:center;gap:0.7rem;padding:0.6rem 0.8rem;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:8px;">
+          <span>${icons[s.status] || 'ℹ️'}</span>
+          <span style="flex:1;font-family:monospace;font-size:0.82rem;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(s.ticketId)}</span>
+          <span style="font-size:0.75rem;color:var(--text-muted);">${formatDateTime(s.time.toISOString())}</span>
+        </div>`).join('');
+    }
+
+    clearHistoryBtn.addEventListener('click', () => {
+      sessionScans.length = 0;
+      renderHistory();
+    });
+
+  })();
+  </script>
+</body>
+</html>

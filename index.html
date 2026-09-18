@@ -1,0 +1,54 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>CinePass — QR Movie Ticket System</title>
+  <meta name="description" content="CinePass: Book movie tickets, generate QR codes, scan for entry, and manage the dashboard. A fully offline cinema ticket management system."/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <div id="navbar-placeholder"></div>
+
+  <div class="hero" style="position:relative;z-index:1;">
+    <div class="hero-badge">🎬 Cinema QR Ticket System</div>
+    <h1>
+      WELCOME TO<br>
+      <span class="accent">CINE</span><span class="red">PASS</span>
+    </h1>
+    <p>
+      The complete QR-powered movie ticket management system. Book tickets, generate unique QR codes, scan for entry verification, and track everything from the dashboard — all offline, no backend required.
+    </p>
+    <div class="hero-actions">
+      <a href="booking.html" class="btn btn-primary btn-lg">🎟️ Book a Ticket</a>
+      <a href="scanner.html" class="btn btn-outline btn-lg">📷 Scan &amp; Verify</a>
+      <a href="dashboard.html" class="btn btn-gold btn-lg">📊 Dashboard</a>
+    </div>
+
+    <div class="feature-cards">
+      <a href="booking.html" class="feature-card">
+        <div class="feature-card-icon red">🎟️</div>
+        <h3>Ticket Booking</h3>
+        <p>Fill in customer details, choose movie, show time, and seats. Get a unique Ticket ID with a downloadable QR code instantly.</p>
+      </a>
+      <a href="scanner.html" class="feature-card">
+        <div class="feature-card-icon gold">📷</div>
+        <h3>QR Scanner</h3>
+        <p>Use your camera to scan ticket QR codes at the entry gate. Validates against the database and prevents duplicate entry.</p>
+      </a>
+      <a href="dashboard.html" class="feature-card">
+        <div class="feature-card-icon green">📊</div>
+        <h3>Live Dashboard</h3>
+        <p>Track all booked tickets, filter by name or movie, monitor entry status, and manage your cinema's ticketing records.</p>
+      </a>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer style="position:relative;z-index:1;text-align:center;padding:2rem;border-top:1px solid var(--border-subtle);color:var(--text-muted);font-size:0.82rem;">
+    CinePass &copy; 2026 &mdash; Offline-first QR Movie Ticket System &mdash; No backend required
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
